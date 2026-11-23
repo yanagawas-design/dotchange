@@ -155,14 +155,6 @@ body {
   overflow: hidden;
 }
 
-@media (max-width: 1024px) {
-  .main-content {
-    grid-template-columns: 1fr;
-    height: auto;
-    overflow: visible;
-  }
-}
-
 /* ========================================================
    コントロールサイドバー（左メニューのみ上下スクロール）
    ======================================================== */
@@ -1309,4 +1301,101 @@ body {
 .toast.show {
   transform: translateY(0);
   opacity: 1;
+}
+
+/* ========================================================
+   スマホ・縦長画面対応（縦並び・全体スクロール有効化）
+   ======================================================== */
+@media (max-width: 1024px), (orientation: portrait) {
+  html, body {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    height: auto !important;
+    min-height: 100% !important;
+  }
+
+  .app-container {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+  }
+
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .main-content {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* コントロールサイドバー（メニュー） */
+  .control-panel {
+    height: auto !important;
+    overflow: visible !important;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 16px;
+  }
+
+  /* プレビューエリア（画像比較） */
+  .preview-area {
+    height: auto !important;
+    overflow: visible !important;
+    padding: 16px;
+    background: var(--bg-primary);
+  }
+
+  .comparison-grid {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    gap: 16px;
+  }
+
+  .preview-card {
+    height: auto !important;
+  }
+
+  .card-body {
+    min-height: 260px;
+    max-height: 380px;
+    padding: 14px;
+  }
+
+  .preview-image {
+    max-height: 300px;
+  }
+
+  .preview-footer {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px 14px;
+    gap: 10px;
+    font-size: 0.72rem;
+  }
+
+  .tech-tag {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  /* 小画面でのボタン折り返し */
+  .color-preset-selector {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  .palette-preset-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .view-controls {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
 }
