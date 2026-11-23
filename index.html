@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DotCraft - リアルタイム・ドット絵（ピクセルアート）コンバーター</title>
+  <meta name="description" content="画像をアップロードしてリアルタイムに本格ドット絵（ピクセルアート）に変換。色数制限(8〜128色/無制限)、組織的ディザリング、背景透過クリーンアップ、ドット手動微調整ツールを搭載。完全ブラウザ完結・サーバー通信なし。">
+  
+  <!-- Canonical & OGP (GitHub Pages) -->
+  <link rel="canonical" href="https://yanagawas-design.github.io/dotchange/">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://yanagawas-design.github.io/dotchange/">
+  <meta property="og:title" content="DotCraft - リアルタイム本格ピクセルアート（ドット絵）コンバーター">
+  <meta property="og:description" content="画像をアップロードしてリアルタイムに本格ドット絵に変換。色数制限、Bayerディザ、透過クリーンアップ、簡易ドットエディタ搭載。完全ブラウザ完結。">
+  <meta property="og:site_name" content="DotCraft">
+  <meta name="theme-color" content="#0f1117">
+
+  <!-- SVG Favicon (👾 ピクセルエイリアン) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👾</text></svg>">
+
+  <!-- 相対パス参照 (サブディレクトリ配下でも100%安全に読み込み) -->
+  <link rel="stylesheet" href="./style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- ヘッダー -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">👾</div>
+        <div class="brand-text">
+          <h1>DotCraft <span class="badge">PRO</span></h1>
+          <p>リアルタイム ピクセルアート（ドット絵）変換ツール</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="sampleBtn" class="btn btn-secondary btn-sm" title="サンプル画像を読み込む">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          サンプル画像で試す
+        </button>
+      </div>
+    </header>
+
+    <!-- メインレイアウト -->
+    <main class="main-content">
+      <!-- コントロールサイドバー -->
+      <aside class="control-panel">
+        <!-- アップロードエリア -->
+        <section class="panel-section upload-section">
+          <div class="section-title">
+            <span class="icon">📁</span>
+            <h2>画像入力</h2>
+          </div>
+          
+          <div id="dropZone" class="drop-zone">
+            <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/gif, image/bmp, image/svg+xml" class="file-input-hidden">
+            <div class="drop-zone-content">
+              <div class="upload-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+              </div>
+              <p class="drop-text-main">画像をドラッグ＆ドロップ</p>
+              <p class="drop-text-sub">または <button type="button" id="browseBtn" class="link-btn">ファイルを選択</button></p>
+              <div class="paste-hint">💡 クリップボード貼り付け (Ctrl+V) にも対応</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 変換設定 -->
+        <section class="panel-section settings-section">
+          <div class="section-title">
+            <span class="icon">⚙️</span>
+            <h2>ドット絵設定</h2>
+          </div>
+
+          <!-- 解像度プリセット選択（要件: 32x32, 64x64, 128x128） -->
+          <div class="form-group">
+            <label class="form-label">
+              <span>変換サイズ（解像度）</span>
+              <span id="currentResolutionBadge" class="info-badge">64px</span>
+            </label>
+            <div class="size-preset-selector">
+              <button type="button" class="preset-btn" data-size="32">
+                <span class="preset-size">32px</span>
+                <span class="preset-desc">粗め・レトロ</span>
+              </button>
+              <button type="button" class="preset-btn active" data-size="64">
+                <span class="preset-size">64px</span>
+                <span class="preset-desc">標準・バランス</span>
+              </button>
+              <button type="button" class="preset-btn" data-size="128">
+                <span class="preset-size">128px</span>
+                <span class="preset-desc">高精細</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- アスペクト比維持 / 正方形固定 -->
+          <div class="form-group">
+            <label class="form-label">
+              <span>リサイズ方式</span>
+            </label>
+            <div class="segmented-control">
+              <button type="button" class="segment-btn active" data-aspect="keep">元のアスペクト比を維持</button>
+              <button type="button" class="segment-btn" data-aspect="square">正方形にリサイズ</button>
+            </div>
+          </div>
+
+          <!-- レトロゲーム風カラーパレット プリセット -->
+          <div class="form-group">
+            <label class="form-label">
+              <span>カラーパレット・スタイル</span>
+            </label>
+            <div class="palette-preset-grid" id="palettePresetGrid">
+              <button type="button" class="palette-btn active" data-palette="none">
+                <span class="palette-icon">🎨</span>
+                <span class="palette-name">フルカラー</span>
+                <span class="palette-desc">色数制限で減色</span>
+              </button>
+              <button type="button" class="palette-btn" data-palette="gameboy">
+                <span class="palette-swatch-mini gb-swatch"></span>
+                <span class="palette-name">ゲームボーイ</span>
+                <span class="palette-desc">レトロ緑4色</span>
+              </button>
+              <button type="button" class="palette-btn" data-palette="nes">
+                <span class="palette-swatch-mini nes-swatch"></span>
+                <span class="palette-name">ファミコン</span>
+                <span class="palette-desc">FCレトロ 25色</span>
+              </button>
+              <button type="button" class="palette-btn" data-palette="pico8">
+                <span class="palette-swatch-mini pico-swatch"></span>
+                <span class="palette-name">PICO-8</span>
+                <span class="palette-desc">16色ファンタジー</span>
+              </button>
+              <button type="button" class="palette-btn" data-palette="monochrome">
+                <span class="palette-swatch-mini mono-swatch"></span>
+                <span class="palette-name">モノクロ</span>
+                <span class="palette-desc">白黒・階調</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 使用色数設定 (8色, 16色, 32色, 64色, 128色, 制限なし) -->
+          <div class="form-group" id="colorCountGroup">
+            <div class="form-label">
+              <span>使用色数 (カラーパレット制限)</span>
+              <span id="currentColorCountBadge" class="info-badge">16色</span>
+            </div>
+            <div class="color-preset-selector">
+              <button type="button" class="color-preset-btn" data-colors="8">8色</button>
+              <button type="button" class="color-preset-btn active" data-colors="16">16色</button>
+              <button type="button" class="color-preset-btn" data-colors="32">32色</button>
+              <button type="button" class="color-preset-btn" data-colors="64">64色</button>
+              <button type="button" class="color-preset-btn" data-colors="128">128色</button>
+              <button type="button" class="color-preset-btn" data-colors="0">制限なし</button>
+            </div>
+            <div class="slider-group" style="margin-top: 10px;">
+              <div class="slider-header">
+                <span>色数スライダー</span>
+                <span id="colorCountSliderVal">16色</span>
+              </div>
+              <input type="range" id="colorCountSlider" min="4" max="128" value="16" class="custom-slider">
+            </div>
+          </div>
+
+          <!-- 本格ドット絵補正（アンチエイリアス除去＆ディザ） -->
+          <div class="form-group pixel-enhance-box">
+            <div class="section-subtitle">
+              <span>⚡ 本格ドット絵処理・ディザリング</span>
+            </div>
+
+            <!-- ディザリング（組織的ディザリング/ベイヤー行列） -->
+            <div class="sub-form-group">
+              <div class="form-label-sm" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>組織的ディザリング (網点表現)</span>
+                <label class="switch-label">
+                  <input type="checkbox" id="ditherEnableToggle" checked>
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+              <div id="ditherControls">
+                <div class="segmented-control" id="ditherTypeSelector" style="margin-bottom: 6px;">
+                  <button type="button" class="segment-btn active" data-dithertype="bayer" title="ピクセルアート特有のベイヤー市松模様">
+                    Bayer 網点
+                  </button>
+                  <button type="button" class="segment-btn" data-dithertype="floyd" title="滑らかな拡散ドット">
+                    Floyd 拡散
+                  </button>
+                </div>
+                <div class="slider-group">
+                  <div class="slider-header">
+                    <span>ディザリング強度</span>
+                    <span id="ditherStrengthVal">50%</span>
+                  </div>
+                  <input type="range" id="ditherStrengthSlider" min="10" max="100" value="50" class="custom-slider">
+                </div>
+              </div>
+            </div>
+
+            <!-- 背景透過クリーンアップ (アルファ2値化) -->
+            <div class="sub-form-group">
+              <label class="checkbox-label" title="透過画像の輪郭にある半透明のモヤモヤ・ゴミを完全に消去します">
+                <input type="checkbox" id="alphaCleanupToggle" checked>
+                <span class="checkbox-custom"></span>
+                <span>背景透過の自動クリーンアップ (50%2値化)</span>
+              </label>
+            </div>
+
+            <!-- 縮小方式 & トーン強調 -->
+            <div class="sub-form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="autoToneBoostToggle" checked>
+                <span class="checkbox-custom"></span>
+                <span>ドット絵トーン強調 (コントラスト＆彩度UP)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- パレット一覧＆1色ずつ削除セクション -->
+          <div class="form-group palette-editor-box" id="paletteEditorBox">
+            <div class="form-label">
+              <span>使用色パレット <span class="label-sub">(クリックで1色削除)</span></span>
+              <span id="activeColorsCount" class="info-badge">0 色</span>
+            </div>
+            
+            <div class="palette-toolbar">
+              <button type="button" id="removeLeastColorBtn" class="btn btn-secondary btn-xs" title="使用頻度の最も低い色を1色削除">
+                ➖ 1色減らす
+              </button>
+              <button type="button" id="addOneColorBtn" class="btn btn-secondary btn-xs" title="色数を1つ増やす">
+                ➕ 1色増やす
+              </button>
+              <button type="button" id="resetCustomPaletteBtn" class="btn btn-outline btn-xs" title="削除した色を元に戻す">
+                🔄 リセット
+              </button>
+            </div>
+
+            <div id="paletteSwatches" class="palette-swatches-grid">
+              <!-- JSで動的にカラースウォッチが生成される -->
+            </div>
+            <div id="removedColorsHint" class="removed-colors-hint hidden">
+              💡 <span id="removedCountText">0色の色を削除中</span> - 残りの色へ自動再配分
+            </div>
+          </div>
+
+          <!-- 画像補正スライダー（コントラスト・彩度・明るさ） -->
+          <div class="advanced-settings-toggle">
+            <button type="button" id="toggleAdvancedBtn" class="toggle-link">
+              <span class="toggle-arrow">▶</span> 画質・トーン調整
+            </button>
+          </div>
+
+          <div id="advancedSettings" class="advanced-settings-content collapsed">
+            <div class="slider-group">
+              <div class="slider-header">
+                <span>コントラスト</span>
+                <span id="contrastVal">0</span>
+              </div>
+              <input type="range" id="contrastSlider" min="-50" max="100" value="0" class="custom-slider">
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-header">
+                <span>彩度</span>
+                <span id="saturationVal">100%</span>
+              </div>
+              <input type="range" id="saturationSlider" min="0" max="200" value="100" class="custom-slider">
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-header">
+                <span>明るさ</span>
+                <span id="brightnessVal">0</span>
+              </div>
+              <input type="range" id="brightnessSlider" min="-50" max="50" value="0" class="custom-slider">
+            </div>
+          </div>
+
+          <!-- 表示補助オプション -->
+          <div class="form-group options-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="gridToggle">
+              <span class="checkbox-custom"></span>
+              <span>ピクセルグリッド線を表示</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- 出力・ダウンロードセクション -->
+        <section class="panel-section export-section">
+          <div class="section-title">
+            <span class="icon">💾</span>
+            <h2>ダウンロード</h2>
+          </div>
+          <div class="download-buttons">
+            <button id="downloadOriginalScaleBtn" class="btn btn-outline download-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <div>
+                <div class="btn-main-text">実サイズPNGで保存</div>
+                <div id="originalScaleText" class="btn-sub-text">32 × 32 px</div>
+              </div>
+            </button>
+            <button id="downloadUpscaledBtn" class="btn btn-primary download-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <div>
+                <div class="btn-main-text">くっきり拡大PNGで保存 (おすすめ)</div>
+                <div id="upscaledScaleText" class="btn-sub-text">SNS・共有用 (約512px)</div>
+              </div>
+            </button>
+          </div>
+        </section>
+      </aside>
+
+      <!-- プレビュー＆比較エリア -->
+      <section class="preview-area">
+        <div class="preview-header">
+          <div class="preview-title">
+            <h2>ビフォー / アフター比較</h2>
+            <div class="sync-status">
+              <span class="status-dot"></span>
+              <span id="processStatus">リアルタイム処理完了</span>
+            </div>
+          </div>
+          
+          <div class="view-controls">
+            <button type="button" id="gridToggleBtn" class="btn btn-secondary btn-xs" title="1ドットごとのグリッド境界線を表示切替">
+              🔲 グリッド線: OFF
+            </button>
+            <div class="zoom-group">
+              <button type="button" id="zoomOutBtn" class="icon-btn" title="ズームアウト">−</button>
+              <span id="zoomLevelDisplay" class="zoom-display">100%</span>
+              <button type="button" id="zoomInBtn" class="icon-btn" title="ズームイン">＋</button>
+            </div>
+            <button type="button" id="zoomResetBtn" class="btn btn-secondary btn-xs" title="全体を表示">フィット</button>
+          </div>
+        </div>
+
+        <div class="comparison-grid">
+          <!-- 元画像プレビューカード -->
+          <div class="preview-card original-card">
+            <div class="card-header">
+              <div class="card-label">
+                <span class="badge badge-neutral">Before</span>
+                <span class="card-title">元画像</span>
+              </div>
+              <div id="originalDimensions" class="dimension-tag">- × - px</div>
+            </div>
+            <div class="card-body checkerboard-bg" id="originalViewport">
+              <div id="originalContainer" class="canvas-wrapper">
+                <img id="originalImg" alt="元画像プレビュー" class="preview-image">
+                <div id="originalPlaceholder" class="empty-placeholder">
+                  <div class="empty-icon">🖼️</div>
+                  <p>画像が未選択です</p>
+                  <span>左側のエリアから画像をアップロードしてください</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ドット絵プレビューカード -->
+          <div class="preview-card pixel-card">
+            <div class="card-header pixel-card-header">
+              <div class="card-label">
+                <span class="badge badge-accent">After</span>
+                <span class="card-title">ドット絵</span>
+                <span id="pixelDimensions" class="dimension-tag">64 × 64 px</span>
+              </div>
+              
+              <!-- 簡易ドットエディタツールバー -->
+              <div class="pixel-editor-toolbar" id="editorToolbar">
+                <div class="tool-group">
+                  <button type="button" class="tool-btn active" id="toolPenBtn" title="ペンツール: クリック/ドラッグでドットを描画">
+                    ✏️ ペン
+                  </button>
+                  <button type="button" class="tool-btn" id="toolEyedropperBtn" title="スポイトツール: クリックしたドットの色を取得">
+                    💧 スポイト
+                  </button>
+                  <button type="button" class="tool-btn" id="toolEraserBtn" title="消しゴム: クリックしたドットを透明化">
+                    🧹 消しゴム
+                  </button>
+                </div>
+                
+                <div class="color-picker-wrap" title="現在の描画色 (クリックで変更)">
+                  <input type="color" id="editorColorInput" value="#000000" class="color-input-hidden">
+                  <span id="editorColorIndicator" class="editor-color-indicator" style="background-color: #000000;"></span>
+                </div>
+
+                <div class="tool-group history-group">
+                  <button type="button" class="icon-btn-sm" id="toolUndoBtn" title="元に戻す (Undo)" disabled>↩️</button>
+                  <button type="button" class="icon-btn-sm" id="toolRedoBtn" title="やり直す (Redo)" disabled>🔁</button>
+                  <button type="button" class="btn btn-outline btn-xs" id="toolClearEditBtn" title="手動編集をクリアして自動変換に戻す">元に戻す</button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body checkerboard-bg" id="pixelViewport">
+              <div id="pixelContainer" class="canvas-wrapper">
+                <!-- ドット絵用Canvas（CSSでimage-rendering: pixelatedが適用） -->
+                <canvas id="pixelCanvas" class="pixel-canvas"></canvas>
+                <div id="pixelPlaceholder" class="empty-placeholder">
+                  <div class="empty-icon">👾</div>
+                  <p>変換結果がここに表示されます</p>
+                  <span>近傍法 (pixelated) によりぼやけず鮮明に拡大</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 下部情報バー -->
+        <footer class="preview-footer">
+          <div class="meta-item">
+            <span class="meta-label">ファイル形式:</span>
+            <span id="metaFormat" class="meta-val">-</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">ドット数:</span>
+            <span id="metaPixelCount" class="meta-val">-</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">処理時間:</span>
+            <span id="metaTime" class="meta-val">0ms (クライアント処理)</span>
+          </div>
+          <div class="meta-item tech-tag">
+            <span>⚡ 完全ブラウザ完結 (サーバー送信なし)</span>
+          </div>
+        </footer>
+      </section>
+    </main>
+
+    <!-- トースト通知 -->
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>
